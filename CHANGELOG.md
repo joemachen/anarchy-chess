@@ -2,7 +2,7 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [0.0.1] - unreleased
+## [0.0.1] - 2026-11-01
 ### Added
 - Project foundations: rules library, tests, Godot game shell, `run.bat`, `test.bat`, CI.
 - Empty 6×6 board with clickable squares.
