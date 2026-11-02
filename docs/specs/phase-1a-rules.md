@@ -1,6 +1,6 @@
 # Spec: Phase 1a, Chess rules engine
 
-Status: **draft, waiting for Joe's approval**
+Status: approved by Joe (2026-11-01). Stalemate = pass, no castling, sandbox build v0.0.2.
 
 ## Goal
 The rules library knows chess on a 6×6 board: how every piece moves, what counts as check, checkmate and stalemate, plus en passant and promotion. Everything in Phase 1 (scoring, enemy AI, the round) is built on this, so it gets tested hardest. Scoring and tactics are **not** part of this slice. They're 1b.

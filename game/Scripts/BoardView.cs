@@ -1,24 +1,48 @@
+using AnarchyChess.Core;
 using Godot;
+using Side = AnarchyChess.Core.Side;
 
 namespace AnarchyChess.Godot;
 
-/// <summary>Draws the board and lets the player select a square. Rank 1 is at the bottom.</summary>
+/// <summary>
+/// Draws a position and lets the side to move pick a piece, then one of its legal moves (shown as dots).
+/// Rank 1 is at the bottom. Pieces are placeholder letters until real art lands.
+/// </summary>
 public partial class BoardView : Control
 {
-    private const int Cells = 6;
     private const float SquarePx = 96f;
     private const float MarginPx = 28f; // room for file/rank labels
 
     private static readonly Color Light = new(0.93f, 0.85f, 0.72f);
     private static readonly Color Dark = new(0.62f, 0.45f, 0.33f);
     private static readonly Color Highlight = new(0.98f, 0.82f, 0.2f, 0.75f);
+    private static readonly Color CheckColor = new(0.9f, 0.15f, 0.15f, 0.6f);
+    private static readonly Color DotColor = new(0.1f, 0.1f, 0.12f, 0.45f);
     private static readonly Color LabelColor = new(0.8f, 0.78f, 0.85f);
+    private static readonly Color PlayerFill = new(0.97f, 0.96f, 0.92f);
+    private static readonly Color EnemyFill = new(0.13f, 0.12f, 0.14f);
 
-    private Vector2I? _selected;
+    private Position _position = null!;
+    private IReadOnlyList<Move> _legal = [];
+    private Square? _selected;
+
+    public event Action<Move>? MovePlayed;
+
+    public Position Board
+    {
+        get => _position;
+        set
+        {
+            _position = value;
+            _legal = Rules.LegalMoves(value);
+            _selected = null;
+            CustomMinimumSize = new Vector2(value.Width * SquarePx + MarginPx, value.Height * SquarePx + MarginPx);
+            QueueRedraw();
+        }
+    }
 
     public override void _Ready()
     {
-        CustomMinimumSize = new Vector2(Cells * SquarePx + MarginPx, Cells * SquarePx + MarginPx);
         MouseFilter = MouseFilterEnum.Pass; // margin clicks reach Main, which clears the selection
     }
 
@@ -34,48 +58,76 @@ public partial class BoardView : Control
     {
         if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
             return;
-
         var square = SquareAt(click.Position);
-        if (square == null)
+        if (square is not { } clicked)
             return; // click on the label margin: let it fall through and clear the selection
-
         AcceptEvent();
-        _selected = square == _selected ? null : square;
-        Log.Debug(_selected is { } s ? $"Selected {SquareName(s)}" : "Cleared selection");
+
+        var move = _legal.FirstOrDefault(m => m.From == _selected && m.To == clicked);
+        if (_selected != null && move != default)
+        {
+            MovePlayed?.Invoke(move);
+            return;
+        }
+
+        _selected = _legal.Any(m => m.From == clicked) && clicked != _selected ? clicked : null;
+        Log.Debug(_selected is { } s ? $"Selected {s}" : "Cleared selection");
         QueueRedraw();
     }
 
     public override void _Draw()
     {
         var font = ThemeDB.FallbackFont;
-        for (var file = 0; file < Cells; file++)
-        for (var rank = 0; rank < Cells; rank++)
+        for (var file = 0; file < _position.Width; file++)
+        for (var rank = 0; rank < _position.Height; rank++)
         {
-            var rect = new Rect2(ScreenPos(file, rank), new Vector2(SquarePx, SquarePx));
+            var square = new Square(file, rank);
+            var rect = new Rect2(ScreenPos(square), new Vector2(SquarePx, SquarePx));
             DrawRect(rect, (file + rank) % 2 == 0 ? Dark : Light);
-            if (_selected == new Vector2I(file, rank))
+            if (square == _selected)
                 DrawRect(rect, Highlight);
+            if (_position[square] is { Def.Royal: true } king && Rules.IsInCheck(_position, king.Side))
+                DrawRect(rect, CheckColor);
+            if (_position[square] is { } piece)
+                DrawPiece(font, rect, piece);
         }
 
-        for (var i = 0; i < Cells; i++)
+        foreach (var move in _legal.Where(m => m.From == _selected))
         {
-            var fileLabel = ((char)('a' + i)).ToString();
-            DrawString(font, ScreenPos(i, 0) + new Vector2(SquarePx / 2 - 5, SquarePx + 20), fileLabel, fontSize: 18, modulate: LabelColor);
-            DrawString(font, ScreenPos(0, i) + new Vector2(-MarginPx + 6, SquarePx / 2 + 6), (i + 1).ToString(), fontSize: 18, modulate: LabelColor);
+            var center = ScreenPos(move.To) + new Vector2(SquarePx, SquarePx) / 2;
+            var captures = _position[move.To] != null || move.Kind == MoveKind.EnPassant;
+            if (captures)
+                DrawArc(center, SquarePx * 0.44f, 0, Mathf.Tau, 32, DotColor, 6f);
+            else
+                DrawCircle(center, SquarePx * 0.14f, DotColor);
         }
+
+        for (var i = 0; i < _position.Width; i++)
+            DrawString(font, ScreenPos(new Square(i, 0)) + new Vector2(SquarePx / 2 - 5, SquarePx + 20),
+                ((char)('a' + i)).ToString(), fontSize: 18, modulate: LabelColor);
+        for (var i = 0; i < _position.Height; i++)
+            DrawString(font, ScreenPos(new Square(0, i)) + new Vector2(-MarginPx + 6, SquarePx / 2 + 6),
+                (i + 1).ToString(), fontSize: 18, modulate: LabelColor);
     }
 
-    private static Vector2 ScreenPos(int file, int rank) =>
-        new(MarginPx + file * SquarePx, (Cells - 1 - rank) * SquarePx);
-
-    private static Vector2I? SquareAt(Vector2 pos)
+    private void DrawPiece(Font font, Rect2 rect, Piece piece)
     {
-        var file = (int)Mathf.Floor((pos.X - MarginPx) / SquarePx);
-        var row = (int)Mathf.Floor(pos.Y / SquarePx);
-        if (file < 0 || file >= Cells || row < 0 || row >= Cells)
-            return null;
-        return new Vector2I(file, Cells - 1 - row);
+        var center = rect.GetCenter();
+        var player = piece.Side == Side.Player;
+        DrawCircle(center, SquarePx * 0.36f, player ? PlayerFill : EnemyFill);
+        DrawArc(center, SquarePx * 0.36f, 0, Mathf.Tau, 32, player ? EnemyFill : PlayerFill, 2f);
+        const int size = 40;
+        var letter = piece.Def.Letter.ToString();
+        var width = font.GetStringSize(letter, fontSize: size).X;
+        DrawString(font, center + new Vector2(-width / 2, size * 0.36f), letter, fontSize: size,
+            modulate: player ? EnemyFill : PlayerFill);
     }
 
-    private static string SquareName(Vector2I s) => $"{(char)('a' + s.X)}{s.Y + 1}";
+    private Vector2 ScreenPos(Square s) => new(MarginPx + s.File * SquarePx, (_position.Height - 1 - s.Rank) * SquarePx);
+
+    private Square? SquareAt(Vector2 pos)
+    {
+        var square = new Square((int)Mathf.Floor((pos.X - MarginPx) / SquarePx), _position.Height - 1 - (int)Mathf.Floor(pos.Y / SquarePx));
+        return _position.Contains(square) ? square : null;
+    }
 }
