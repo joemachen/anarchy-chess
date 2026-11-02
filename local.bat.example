@@ -1,0 +1,2 @@
+@rem Machine-specific settings for run.bat. Copy this file to local.bat (which git ignores) and edit.
+set "GODOT=D:\Projects\Godot\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64.exe"

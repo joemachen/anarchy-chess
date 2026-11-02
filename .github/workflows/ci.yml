@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Includes the Godot project: Godot.NET.Sdk comes from NuGet, so it compiles without Godot installed.
+      - name: Build
+        run: dotnet build AnarchyChess.sln -c Release
+
+      - name: Test
+        run: dotnet test AnarchyChess.sln -c Release --no-build

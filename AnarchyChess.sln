@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{08492114-CA1F-4E33-AC37-5DCE4C4FFA18}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnarchyChess.Core", "src\AnarchyChess.Core\AnarchyChess.Core.csproj", "{D44204C8-BCC1-4B6C-A0D9-05BA47F59151}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D47AEAC3-26AB-424C-9183-499B4791905D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnarchyChess.Core.Tests", "tests\AnarchyChess.Core.Tests\AnarchyChess.Core.Tests.csproj", "{D17D73BE-AC8B-4287-A5B4-E34C46CF2518}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnarchyChess.Godot", "game\AnarchyChess.Godot.csproj", "{29E3BF7D-02AE-48A8-B8B4-DFDF0D7E2276}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D44204C8-BCC1-4B6C-A0D9-05BA47F59151}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D44204C8-BCC1-4B6C-A0D9-05BA47F59151}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D44204C8-BCC1-4B6C-A0D9-05BA47F59151}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D44204C8-BCC1-4B6C-A0D9-05BA47F59151}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D17D73BE-AC8B-4287-A5B4-E34C46CF2518}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D17D73BE-AC8B-4287-A5B4-E34C46CF2518}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D17D73BE-AC8B-4287-A5B4-E34C46CF2518}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D17D73BE-AC8B-4287-A5B4-E34C46CF2518}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29E3BF7D-02AE-48A8-B8B4-DFDF0D7E2276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29E3BF7D-02AE-48A8-B8B4-DFDF0D7E2276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29E3BF7D-02AE-48A8-B8B4-DFDF0D7E2276}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{29E3BF7D-02AE-48A8-B8B4-DFDF0D7E2276}.Release|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D44204C8-BCC1-4B6C-A0D9-05BA47F59151} = {08492114-CA1F-4E33-AC37-5DCE4C4FFA18}
+		{D17D73BE-AC8B-4287-A5B4-E34C46CF2518} = {D47AEAC3-26AB-424C-9183-499B4791905D}
+	EndGlobalSection
+EndGlobal

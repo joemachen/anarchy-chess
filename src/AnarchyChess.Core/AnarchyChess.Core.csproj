@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The rules library. MUST NOT reference Godot or any engine assembly
+    (enforced by tests/AnarchyChess.Core.Tests/ArchitectureTests.cs).
+  -->
+  <PropertyGroup>
+    <RootNamespace>AnarchyChess.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Turns non-deterministic APIs (BannedSymbols.txt) into build errors. Compile-time only; not shipped. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+</Project>
