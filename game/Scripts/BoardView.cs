@@ -22,21 +22,29 @@ public partial class BoardView : Control
     private static readonly Color PlayerFill = new(0.97f, 0.96f, 0.92f);
     private static readonly Color EnemyFill = new(0.13f, 0.12f, 0.14f);
 
+    private static readonly Color ForkedColor = new(0.85f, 0.2f, 0.55f);
+    private static readonly Color PinnedColor = new(0.2f, 0.45f, 0.85f);
+    private static readonly Color PreviewColor = new(0.05f, 0.45f, 0.15f);
+
+    private Round _round = null!;
     private Position _position = null!;
     private IReadOnlyList<Move> _legal = [];
+    private IReadOnlySet<Square> _pinned = new HashSet<Square>();
     private Square? _selected;
 
     public event Action<Move>? MovePlayed;
 
-    public Position Board
+    public Round Round
     {
-        get => _position;
+        get => _round;
         set
         {
-            _position = value;
-            _legal = Rules.LegalMoves(value);
+            _round = value;
+            _position = value.Position;
+            _legal = Rules.LegalMoves(_position);
+            _pinned = value.Pinned;
             _selected = null;
-            CustomMinimumSize = new Vector2(value.Width * SquarePx + MarginPx, value.Height * SquarePx + MarginPx);
+            CustomMinimumSize = new Vector2(_position.Width * SquarePx + MarginPx, _position.Height * SquarePx + MarginPx);
             QueueRedraw();
         }
     }
@@ -44,6 +52,12 @@ public partial class BoardView : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Pass; // margin clicks reach Main, which clears the selection
+    }
+
+    public void Select(Square square)
+    {
+        _selected = square;
+        QueueRedraw();
     }
 
     public void ClearSelection()
@@ -90,6 +104,10 @@ public partial class BoardView : Control
                 DrawRect(rect, CheckColor);
             if (_position[square] is { } piece)
                 DrawPiece(font, rect, piece);
+            if (_round.ForkTags.Contains(square))
+                DrawBadge(font, rect, "FORKED", ForkedColor);
+            else if (_pinned.Contains(square))
+                DrawBadge(font, rect, "PINNED", PinnedColor);
         }
 
         foreach (var move in _legal.Where(m => m.From == _selected))
@@ -100,6 +118,11 @@ public partial class BoardView : Control
                 DrawArc(center, SquarePx * 0.44f, 0, Mathf.Tau, 32, DotColor, 6f);
             else
                 DrawCircle(center, SquarePx * 0.14f, DotColor);
+
+            // Score preview: only the player scores (decision D8).
+            if (_position.ToMove == Side.Player && _round.Preview(move) is { Tactic: { } tactic } preview)
+                DrawBadge(font, new Rect2(ScreenPos(move.To) + new Vector2(0, SquarePx * 0.72f), SquarePx, SquarePx * 0.28f),
+                    $"+{preview.Score} {tactic.Name.ToUpperInvariant()}", PreviewColor);
         }
 
         for (var i = 0; i < _position.Width; i++)
@@ -121,6 +144,16 @@ public partial class BoardView : Control
         var width = font.GetStringSize(letter, fontSize: size).X;
         DrawString(font, center + new Vector2(-width / 2, size * 0.36f), letter, fontSize: size,
             modulate: player ? EnemyFill : PlayerFill);
+    }
+
+    /// <summary>A small label on a coloured strip across the top of <paramref name="rect"/>.</summary>
+    private void DrawBadge(Font font, Rect2 rect, string text, Color color)
+    {
+        const int size = 13;
+        var strip = new Rect2(rect.Position, new Vector2(rect.Size.X, size + 8));
+        DrawRect(strip, color);
+        var width = font.GetStringSize(text, fontSize: size).X;
+        DrawString(font, strip.Position + new Vector2((strip.Size.X - width) / 2, size + 2), text, fontSize: size, modulate: Colors.White);
     }
 
     private Vector2 ScreenPos(Square s) => new(MarginPx + s.File * SquarePx, (_position.Height - 1 - s.Rank) * SquarePx);

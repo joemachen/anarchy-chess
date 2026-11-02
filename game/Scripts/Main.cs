@@ -8,13 +8,17 @@ namespace AnarchyChess.Godot;
 /// <summary>
 /// Root of the game UI, built in code.
 /// Command-line args (after "--"): --seed=N (play that seed), --overlay (start with the debug overlay open),
-/// --moves=b2b4,c5c3 (replay moves from the start), --screenshot=path.png (save a screenshot after the first frames and quit).
+/// --moves=b2b4,c5c3 (replay moves from the start), --select=c3 (select that square),
+/// --screenshot=path.png (save a screenshot after the first frames and quit).
 /// </summary>
 public partial class Main : Control
 {
     private PieceCatalog _catalog = null!;
+    private TacticCatalog _tactics = null!;
     private BoardView _board = null!;
     private Label _status = null!;
+    private Label _score = null!;
+    private Label _callout = null!;
     private DebugOverlay _overlay = null!;
     private int _moveNumber;
 
@@ -25,6 +29,7 @@ public partial class Main : Control
         Log.Info($"Anarchy Chess v{GameInfo.Version}, seed {seed}");
 
         _catalog = PieceCatalog.FromJson(FileAccess.GetFileAsString("res://content/pieces.json"));
+        _tactics = TacticCatalog.FromJson(FileAccess.GetFileAsString("res://content/tactics.json"));
 
         var center = new CenterContainer();
         center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -40,6 +45,14 @@ public partial class Main : Control
         _board = new BoardView();
         _board.MovePlayed += Play;
         column.AddChild(_board);
+
+        _callout = new Label { HorizontalAlignment = HorizontalAlignment.Center };
+        _callout.AddThemeFontSizeOverride("font_size", 22);
+        column.AddChild(_callout);
+
+        _score = new Label { Position = new Vector2(24, 90) };
+        _score.AddThemeFontSizeOverride("font_size", 40);
+        AddChild(_score);
 
         var reset = new Button { Text = "Reset", SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
         reset.Pressed += Reset;
@@ -74,6 +87,9 @@ public partial class Main : Control
         var moves = args.FirstOrDefault(a => a.StartsWith("--moves="));
         if (moves != null)
             Replay(moves["--moves=".Length..]);
+        var select = args.FirstOrDefault(a => a.StartsWith("--select="));
+        if (select != null)
+            _board.Select(Square.Parse(select["--select=".Length..]));
 
         var shot = args.FirstOrDefault(a => a.StartsWith("--screenshot="));
         if (shot != null)
@@ -96,19 +112,33 @@ public partial class Main : Control
     private void Reset()
     {
         _moveNumber = 0;
-        _board.Board = Diagram.Parse(FileAccess.GetFileAsString("res://content/sandbox.txt"), _catalog, Side.Player);
+        var start = Diagram.Parse(FileAccess.GetFileAsString("res://content/sandbox.txt"), _catalog, Side.Player);
+        _board.Round = Round.Start(start, _tactics);
+        _callout.Text = "";
         Log.Info("Sandbox reset");
         UpdateStatus();
     }
 
     private void Play(Move move)
     {
-        var mover = _board.Board.ToMove;
-        var next = Rules.Play(_board.Board, move);
+        var mover = _board.Round.Position.ToMove;
+        var (next, scored) = _board.Round.Play(move);
         Log.Info($"Move {++_moveNumber}: {mover} {move.From.Name}{move.To.Name}{(move.Kind == MoveKind.Normal ? "" : $" ({move.Kind})")}");
-        if (next.ToMove == mover)
+        if (next.Position.ToMove == mover)
             Log.Info($"{mover.Opponent()} has no legal move and passes");
-        _board.Board = next;
+
+        if (scored != null)
+        {
+            var parts = new List<string>();
+            if (scored.Tactic != null)
+                parts.Add($"{(scored.Checkmate ? "CHECKMATE!" : scored.Tactic.Callout)} {scored.Breakdown}");
+            if (scored.ForkTargets.Count > 0)
+                parts.Add($"FORK SET UP on {scored.ForkTargets.Count} {(scored.ForkTargets.Count == 1 ? "piece" : "pieces")}");
+            _callout.Text = string.Join("   ·   ", parts);
+            if (scored.Score > 0)
+                Log.Info($"Scored {scored.Tactic!.Name}: {scored.Breakdown}");
+        }
+        _board.Round = next;
         UpdateStatus();
     }
 
@@ -117,7 +147,7 @@ public partial class Main : Control
     {
         foreach (var text in moves.Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            var move = Rules.LegalMoves(_board.Board).FirstOrDefault(m => m.From.Name + m.To.Name == text);
+            var move = Rules.LegalMoves(_board.Round.Position).FirstOrDefault(m => m.From.Name + m.To.Name == text);
             if (move == default)
             {
                 Log.Info($"Replay stopped: '{text}' isn't a legal move here");
@@ -129,7 +159,8 @@ public partial class Main : Control
 
     private void UpdateStatus()
     {
-        var pos = _board.Board;
+        var pos = _board.Round.Position;
+        _score.Text = $"SCORE\n{_board.Round.Score}";
         var turn = pos.ToMove == Side.Player ? "Your move" : "Enemy's move (you play them for now)";
         _status.Text = Rules.Status(pos) switch
         {

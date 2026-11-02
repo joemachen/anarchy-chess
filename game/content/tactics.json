@@ -1,0 +1,10 @@
+{
+  "tactics": [
+    { "id": "capture",   "name": "Capture",    "callout": "CAPTURE",    "value": 0, "mult": 1 },
+    { "id": "check",     "name": "Check",      "callout": "CHECK!",     "value": 2, "mult": 2 },
+    { "id": "fork",      "name": "Fork",       "callout": "FORK!",      "value": 2, "mult": 3 },
+    { "id": "pin",       "name": "Pin",        "callout": "PINNED!",    "value": 2, "mult": 4 },
+    { "id": "promotion", "name": "Promotion",  "callout": "PROMOTION!", "value": 1, "mult": 6 },
+    { "id": "enPassant", "name": "En passant", "callout": "HOLY HELL",  "value": 4, "mult": 10 }
+  ]
+}
