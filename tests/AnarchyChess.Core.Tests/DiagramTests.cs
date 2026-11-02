@@ -20,6 +20,14 @@ public class DiagramTests
     }
 
     [Fact]
+    public void Write_RoundTripsWithParse()
+    {
+        var text = Diagram.Write(Pos(StartPosition));
+        Assert.Equal(text, Diagram.Write(Pos(text)));
+        Assert.StartsWith("r n b q k r", text);
+    }
+
+    [Fact]
     public void UnknownLetter_Throws() =>
         Assert.Throws<FormatException>(() => Pos(". z\n. ."));
 
@@ -27,11 +35,4 @@ public class DiagramTests
     public void RaggedRows_Throw() =>
         Assert.Throws<FormatException>(() => Pos(". .\n. . ."));
 
-    [Fact]
-    public void SandboxStart_Is6x6()
-    {
-        var pos = Pos(Read("sandbox.txt"));
-        Assert.Equal(6, pos.Width);
-        Assert.Equal(6, pos.Height);
-    }
 }

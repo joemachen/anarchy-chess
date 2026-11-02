@@ -19,7 +19,19 @@ internal static class TestContent
 
     public static Position Play(Position pos, string fromTo) => pos.Apply(Find(pos, fromTo));
 
-    public static Round StartRound(string diagram, Side toMove = Side.Player) => Round.Start(Pos(diagram, toMove), Tactics);
+    /// <summary>The standard 6x6 opening (was the v0.0.2 sandbox start).</summary>
+    public const string StartPosition = """
+        r n b q k r
+        p p p p p p
+        . . . . . .
+        . . . . . .
+        P P P P P P
+        R N B Q K R
+        """;
+
+    /// <summary>A round from a diagram, with a target and move limit high enough not to end it unless a test says so.</summary>
+    public static Round StartRound(string diagram, Side toMove = Side.Player, int target = int.MaxValue, int moves = int.MaxValue) =>
+        Round.Start(Pos(diagram, toMove), Tactics, target, moves, seed: 0);
 
     /// <summary>Plays the moves in order (e.g. "c2d4", "f5f6") and returns the round and the last move's scoring.</summary>
     public static (Round Round, ScoredMove? Last) Play(Round round, params string[] moves)

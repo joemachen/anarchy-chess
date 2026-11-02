@@ -1,6 +1,6 @@
 # Spec: Phase 1c, The round and the enemy AI
 
-Status: **draft, waiting for Joe's approval**
+Status: approved by Joe (2026-11-01), as written.
 
 ## Goal
 This is the first build that plays like the game rather than a sandbox. Each round deals a fresh board from the seed, and the enemy moves on its own. You get **10 moves to reach a score target**, across a ladder of 5 rounds. This build answers the Phase 1 question: does banking points with a fork feel good?
