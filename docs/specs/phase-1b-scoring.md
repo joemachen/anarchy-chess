@@ -1,6 +1,6 @@
 # Spec: Phase 1b, Tactics and scoring
 
-Status: **draft, waiting for Joe's approval**
+Status: approved by Joe (2026-11-01), as written.
 
 ## Goal
 Your moves score points: **Score = Value × Mult**, where the tactic you pulled off sets the Mult. This is the heart of the game, so every tactic is defined precisely enough to test. The enemy never scores (decision D8).

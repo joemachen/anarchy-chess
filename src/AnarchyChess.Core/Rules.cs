@@ -46,7 +46,7 @@ public static class Rules
     }
 
     /// <summary>Squares the piece attacks: where it could capture, whether or not anything is there.</summary>
-    private static IEnumerable<Square> Attacks(Position pos, Square from, Piece piece)
+    public static IEnumerable<Square> Attacks(Position pos, Square from, Piece piece)
     {
         if (piece.Def.Pawn)
         {
