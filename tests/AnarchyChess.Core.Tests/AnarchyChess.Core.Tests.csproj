@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Tests run against the real game content. -->
+    <None Include="..\..\game\content\**" LinkBase="content" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\AnarchyChess.Core\AnarchyChess.Core.csproj" />
   </ItemGroup>
 
