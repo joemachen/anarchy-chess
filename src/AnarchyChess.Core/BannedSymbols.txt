@@ -1,0 +1,10 @@
+; Banned in Core so every game is reproducible from its seed (docs/decisions.md D9).
+; Format: <DocumentationId>;<build error message>. Violations are RS0030 build errors.
+T:System.Random;Use AnarchyChess.Core.Rng, seeded from the game seed.
+M:System.Guid.NewGuid;Non-deterministic. Derive ids from game state.
+P:System.DateTime.Now;Wall-clock time must not affect game rules.
+P:System.DateTime.UtcNow;Wall-clock time must not affect game rules.
+P:System.DateTimeOffset.Now;Wall-clock time must not affect game rules.
+P:System.DateTimeOffset.UtcNow;Wall-clock time must not affect game rules.
+P:System.Environment.TickCount;Wall-clock time must not affect game rules.
+P:System.Environment.TickCount64;Wall-clock time must not affect game rules.

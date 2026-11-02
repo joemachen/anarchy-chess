@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in a build doesn't work or look right.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown bottom-right in the game, e.g. v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Seed
+      description: Shown bottom-right in the game, e.g. 48213
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where in the game
+      description: e.g. "ante 2, round 1, move 4" (leave blank if not relevant)
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, click by click?
+      placeholder: |
+        1. Launched with run.bat
+        2. Clicked the knight on b1
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Screenshots welcome (drag them into this box).
+    validations:
+      required: true
+  - type: textarea
+    id: buginfo
+    attributes:
+      label: Bug info
+      description: Press F3 in the game, click "Copy bug info", and paste here.
+      render: text

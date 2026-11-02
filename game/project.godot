@@ -1,0 +1,27 @@
+; Godot 4 project for the Anarchy Chess UI. All game rules live in src/AnarchyChess.Core;
+; this project only draws state and forwards player input.
+
+config_version=5
+
+[application]
+
+config/name="Anarchy Chess"
+run/main_scene="res://Scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[dotnet]
+
+project/assembly_name="AnarchyChess.Godot"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.11, 0.1, 0.13, 1)
