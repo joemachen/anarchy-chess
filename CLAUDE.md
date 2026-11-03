@@ -40,5 +40,6 @@ run.bat  test.bat  local.bat.example
 ## Commands
 - Build and test: `dotnet build AnarchyChess.sln` and `dotnet test AnarchyChess.sln`
 - Launch without pauses (scripted): `run.bat --ci [seed]`
-- Save a screenshot and quit (for smoke tests): `run.bat --ci --screenshot=C:\path\shot.png`
+- Save a screenshot and quit (for smoke tests): `run.bat --ci "--screenshot=C:\path\shot.png"`
+- Replay a bug report: `run.bat 48213 "--round=2" "--moves=b1c3,c3e4"` (your moves only; the enemy replies deterministically). Quote any argument containing `=`, because cmd splits on it.
 - The Godot path defaults to `D:\Projects\Godot\Godot_v4.7.1-stable_mono_win64\…`. Override it in `local.bat` (copy it from `local.bat.example`).

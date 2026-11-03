@@ -152,7 +152,7 @@ public class ScoringTests
     [Fact]
     public void QuietMove_ScoresNothing()
     {
-        var (_, scored) = Play(Round.Start(Pos(Read("sandbox.txt")), Tactics), "a2a3");
+        var (_, scored) = Play(StartRound(StartPosition), "a2a3");
         Assert.Null(scored!.Tactic);
         Assert.Equal(0, scored.Score);
     }
@@ -350,7 +350,7 @@ public class ScoringTests
     {
         var rounds = new[]
         {
-            Round.Start(Pos(Read("sandbox.txt")), Tactics),
+            StartRound(StartPosition),
             Play(StartRound(RoyalFork), "c2d4", "f5f6").Round,
             Play(StartRound(TwoRooks), "e2d4", "b5b3").Round,
             StartRound("""

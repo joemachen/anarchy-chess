@@ -1,0 +1,19 @@
+{
+  "boardSize": 6,
+  "moves": 10,
+  "playerArmy": ["rook", "bishop", "knight", "pawn", "pawn"],
+  "enemyPool": [
+    { "piece": "pawn",   "weight": 8 },
+    { "piece": "knight", "weight": 3 },
+    { "piece": "bishop", "weight": 3 },
+    { "piece": "rook",   "weight": 2 },
+    { "piece": "queen",  "weight": 1 }
+  ],
+  "rounds": [
+    { "target": 15, "enemies": 4 },
+    { "target": 25, "enemies": 5 },
+    { "target": 35, "enemies": 5 },
+    { "target": 50, "enemies": 6 },
+    { "target": 70, "enemies": 7 }
+  ]
+}

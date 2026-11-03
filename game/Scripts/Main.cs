@@ -6,91 +6,52 @@ using Side = AnarchyChess.Core.Side;
 namespace AnarchyChess.Godot;
 
 /// <summary>
-/// Root of the game UI, built in code.
-/// Command-line args (after "--"): --seed=N (play that seed), --overlay (start with the debug overlay open),
-/// --moves=b2b4,c5c3 (replay moves from the start), --select=c3 (select that square),
+/// Root of the game UI, built in code: the 5-round ladder from docs/specs/phase-1c-round.md.
+/// Command-line args (after "--"): --seed=N (play that seed), --round=N (start at round N), --overlay (open the debug
+/// overlay), --moves=b1c3,c3e4 (replay your moves; the enemy replies as it would), --select=c3 (select a square),
 /// --screenshot=path.png (save a screenshot after the first frames and quit).
 /// </summary>
 public partial class Main : Control
 {
+    private const double EnemyDelaySeconds = 0.5;
+
     private PieceCatalog _catalog = null!;
     private TacticCatalog _tactics = null!;
+    private LadderConfig _ladder = null!;
+    private long _seed;
+    private int _roundIndex;
+    private readonly List<string> _yourMoves = [];
+
     private BoardView _board = null!;
-    private Label _status = null!;
+    private Label _hud = null!;
     private Label _score = null!;
     private Label _callout = null!;
+    private Label _seedInfo = null!;
+    private PanelContainer _result = null!;
+    private Label _resultText = null!;
+    private Button _resultButton = null!;
     private DebugOverlay _overlay = null!;
-    private int _moveNumber;
 
     public override void _Ready()
     {
         var args = OS.GetCmdlineUserArgs();
-        var seed = ParseSeed(args) ?? GD.RandRange(100_000, 999_999);
-        Log.Info($"Anarchy Chess v{GameInfo.Version}, seed {seed}");
-
+        _seed = ParseNumber(args, "--seed=") ?? NewSeed();
         _catalog = PieceCatalog.FromJson(FileAccess.GetFileAsString("res://content/pieces.json"));
         _tactics = TacticCatalog.FromJson(FileAccess.GetFileAsString("res://content/tactics.json"));
-
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(center);
-        var column = new VBoxContainer();
-        column.AddThemeConstantOverride("separation", 12);
-        center.AddChild(column);
-
-        _status = new Label { HorizontalAlignment = HorizontalAlignment.Center };
-        _status.AddThemeFontSizeOverride("font_size", 22);
-        column.AddChild(_status);
-
-        _board = new BoardView();
-        _board.MovePlayed += Play;
-        column.AddChild(_board);
-
-        _callout = new Label { HorizontalAlignment = HorizontalAlignment.Center };
-        _callout.AddThemeFontSizeOverride("font_size", 22);
-        column.AddChild(_callout);
-
-        _score = new Label { Position = new Vector2(24, 90) };
-        _score.AddThemeFontSizeOverride("font_size", 40);
-        AddChild(_score);
-
-        var reset = new Button { Text = "Reset", SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
-        reset.Pressed += Reset;
-        column.AddChild(reset);
-
-        var title = new Label { Text = "ANARCHY CHESS", Position = new Vector2(24, 16) };
-        title.AddThemeFontSizeOverride("font_size", 28);
-        AddChild(title);
-
-        var info = new Label { Text = $"Seed {seed} · v{GameInfo.Version}", HorizontalAlignment = HorizontalAlignment.Right };
-        info.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomRight);
-        info.GrowHorizontal = GrowDirection.Begin;
-        info.GrowVertical = GrowDirection.Begin;
-        info.OffsetRight = -16;
-        info.OffsetBottom = -12;
-        AddChild(info);
-
-        var debugButton = new Button { Text = "Debug (F3)", Flat = true };
-        debugButton.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomLeft);
-        debugButton.GrowVertical = GrowDirection.Begin;
-        debugButton.OffsetLeft = 12;
-        debugButton.OffsetBottom = -8;
-        debugButton.Pressed += ToggleOverlay;
-        AddChild(debugButton);
-
-        _overlay = new DebugOverlay { Seed = seed };
-        AddChild(_overlay);
+        _ladder = LadderConfig.FromJson(FileAccess.GetFileAsString("res://content/rounds.json"));
+        BuildUi();
         if (args.Contains("--overlay"))
             ToggleOverlay();
 
-        Reset();
+        var startRound = (int)Math.Clamp(ParseNumber(args, "--round=") ?? 1, 1, _ladder.Rounds.Count) - 1;
+        StartRound(startRound);
+
         var moves = args.FirstOrDefault(a => a.StartsWith("--moves="));
         if (moves != null)
             Replay(moves["--moves=".Length..]);
         var select = args.FirstOrDefault(a => a.StartsWith("--select="));
         if (select != null)
             _board.Select(Square.Parse(select["--select=".Length..]));
-
         var shot = args.FirstOrDefault(a => a.StartsWith("--screenshot="));
         if (shot != null)
             _ = SaveScreenshotAndQuit(shot["--screenshot=".Length..]);
@@ -109,22 +70,44 @@ public partial class Main : Control
             _board.ClearSelection();
     }
 
-    private void Reset()
+    private void StartRound(int index)
     {
-        _moveNumber = 0;
-        var start = Diagram.Parse(FileAccess.GetFileAsString("res://content/sandbox.txt"), _catalog, Side.Player);
-        _board.Round = Round.Start(start, _tactics);
+        _roundIndex = index;
+        _yourMoves.Clear();
+        var round = Setup.StartRound(_catalog, _tactics, _ladder, _seed, index);
+        _board.LastMove = null;
+        _board.Round = round;
         _callout.Text = "";
-        Log.Info("Sandbox reset");
-        UpdateStatus();
+        _result.Visible = false;
+        _seedInfo.Text = $"Seed {_seed} · v{GameInfo.Version}";
+        Log.Info($"Round {index + 1}/{_ladder.Rounds.Count}, seed {_seed}, target {round.Target}:\n{Diagram.Write(round.Position)}");
+        UpdateHud();
     }
 
-    private void Play(Move move)
+    private async void OnYourMove(Move move)
+    {
+        _yourMoves.Add(move.From.Name + move.To.Name);
+        Apply(move);
+        while (_board.Round is { Outcome: Outcome.Playing, Position.ToMove: Side.Enemy })
+        {
+            await ToSignal(GetTree().CreateTimer(EnemyDelaySeconds), SceneTreeTimer.SignalName.Timeout);
+            EnemyMove();
+        }
+    }
+
+    private void EnemyMove()
+    {
+        var (move, reason) = EnemyAi.Choose(_board.Round.Position, _board.Round.EnemyRng());
+        Log.Info($"Enemy AI chose {move.From.Name}{move.To.Name} ({reason})");
+        Apply(move);
+    }
+
+    private void Apply(Move move)
     {
         var mover = _board.Round.Position.ToMove;
         var (next, scored) = _board.Round.Play(move);
-        Log.Info($"Move {++_moveNumber}: {mover} {move.From.Name}{move.To.Name}{(move.Kind == MoveKind.Normal ? "" : $" ({move.Kind})")}");
-        if (next.Position.ToMove == mover)
+        Log.Info($"{mover} {move.From.Name}{move.To.Name}{(move.Kind == MoveKind.Normal ? "" : $" ({move.Kind})")}");
+        if (next.Position.ToMove == mover && next.Outcome == Outcome.Playing)
             Log.Info($"{mover.Opponent()} has no legal move and passes");
 
         if (scored != null)
@@ -138,37 +121,140 @@ public partial class Main : Control
             if (scored.Score > 0)
                 Log.Info($"Scored {scored.Tactic!.Name}: {scored.Breakdown}");
         }
+        _board.LastMove = move;
         _board.Round = next;
-        UpdateStatus();
+        UpdateHud();
+        if (next.Outcome != Outcome.Playing)
+            ShowResult(next);
     }
 
-    /// <summary>Plays moves like "b2b4,c5c3" from the start: replays a bug report's move list.</summary>
+    /// <summary>Plays your moves like "b1c3,c3e4" with the enemy replying instantly: replays a bug report.</summary>
     private void Replay(string moves)
     {
         foreach (var text in moves.Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            var move = Rules.LegalMoves(_board.Round.Position).FirstOrDefault(m => m.From.Name + m.To.Name == text);
+            var move = _board.Round.Outcome == Outcome.Playing
+                ? Rules.LegalMoves(_board.Round.Position).FirstOrDefault(m => m.From.Name + m.To.Name == text)
+                : default;
             if (move == default)
             {
                 Log.Info($"Replay stopped: '{text}' isn't a legal move here");
                 return;
             }
-            Play(move);
+            _yourMoves.Add(text);
+            Apply(move);
+            while (_board.Round is { Outcome: Outcome.Playing, Position.ToMove: Side.Enemy })
+                EnemyMove();
         }
     }
 
-    private void UpdateStatus()
+    private void UpdateHud()
     {
-        var pos = _board.Round.Position;
-        _score.Text = $"SCORE\n{_board.Round.Score}";
-        var turn = pos.ToMove == Side.Player ? "Your move" : "Enemy's move (you play them for now)";
-        _status.Text = Rules.Status(pos) switch
+        var round = _board.Round;
+        var check = Rules.IsInCheck(round.Position, Side.Player) && round.Outcome == Outcome.Playing ? "   ·   CHECK!" : "";
+        _hud.Text = $"ROUND {_roundIndex + 1}/{_ladder.Rounds.Count}   ·   TARGET {round.Target}   ·   MOVES LEFT {round.MovesLeft}{check}";
+        _score.Text = $"SCORE\n{round.Score} / {round.Target}";
+    }
+
+    private void ShowResult(Round round)
+    {
+        var lastRound = _roundIndex == _ladder.Rounds.Count - 1;
+        var won = round.Outcome is Outcome.WonTarget or Outcome.WonCheckmate;
+        _resultText.Text = round.Outcome switch
         {
-            GameStatus.Check => $"{turn}: CHECK!",
-            GameStatus.Checkmate => pos.ToMove == Side.Player ? "Checkmate. The enemy wins." : "Checkmate! You win.",
-            GameStatus.Stalemate => "Stalemate: nobody can move.",
-            _ => turn,
+            Outcome.WonCheckmate => $"CHECKMATE! Round won with {round.MovesLeft} moves to spare.",
+            Outcome.WonTarget => $"ROUND WON! {round.MovesLeft} moves to spare.",
+            Outcome.LostCheckmated => $"CHECKMATED. You reached round {_roundIndex + 1}.",
+            _ => $"OUT OF MOVES: {round.Score} / {round.Target}. You reached round {_roundIndex + 1}.",
         };
+        if (won && lastRound)
+            _resultText.Text += "\nLADDER CLEARED!";
+        _resultButton.Text = !won ? "Retry (new seed)" : lastRound ? "Play again (new seed)" : "Next round";
+        _result.Visible = true;
+        Log.Info($"Round {_roundIndex + 1} ended: {round.Outcome}, score {round.Score}/{round.Target}");
+    }
+
+    private void OnResultButton()
+    {
+        var won = _board.Round.Outcome is Outcome.WonTarget or Outcome.WonCheckmate;
+        if (won && _roundIndex < _ladder.Rounds.Count - 1)
+        {
+            StartRound(_roundIndex + 1);
+            return;
+        }
+        _seed = NewSeed();
+        StartRound(0);
+    }
+
+    private void BuildUi()
+    {
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 12);
+        center.AddChild(column);
+
+        _hud = new Label { HorizontalAlignment = HorizontalAlignment.Center };
+        _hud.AddThemeFontSizeOverride("font_size", 22);
+        column.AddChild(_hud);
+
+        _board = new BoardView();
+        _board.MovePlayed += OnYourMove;
+        column.AddChild(_board);
+
+        _callout = new Label { HorizontalAlignment = HorizontalAlignment.Center };
+        _callout.AddThemeFontSizeOverride("font_size", 22);
+        column.AddChild(_callout);
+
+        _score = new Label { Position = new Vector2(24, 90) };
+        _score.AddThemeFontSizeOverride("font_size", 40);
+        AddChild(_score);
+
+        var title = new Label { Text = "ANARCHY CHESS", Position = new Vector2(24, 16) };
+        title.AddThemeFontSizeOverride("font_size", 28);
+        AddChild(title);
+
+        _seedInfo = new Label { HorizontalAlignment = HorizontalAlignment.Right };
+        _seedInfo.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomRight);
+        _seedInfo.GrowHorizontal = GrowDirection.Begin;
+        _seedInfo.GrowVertical = GrowDirection.Begin;
+        _seedInfo.OffsetRight = -16;
+        _seedInfo.OffsetBottom = -12;
+        AddChild(_seedInfo);
+
+        var debugButton = new Button { Text = "Debug (F3)", Flat = true };
+        debugButton.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomLeft);
+        debugButton.GrowVertical = GrowDirection.Begin;
+        debugButton.OffsetLeft = 12;
+        debugButton.OffsetBottom = -8;
+        debugButton.Pressed += ToggleOverlay;
+        AddChild(debugButton);
+
+        _result = new PanelContainer { Visible = false };
+        _result.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.05f, 0.05f, 0.07f, 0.95f),
+            ContentMarginLeft = 32, ContentMarginRight = 32, ContentMarginTop = 24, ContentMarginBottom = 24,
+        });
+        var resultCenter = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        resultCenter.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(resultCenter);
+        resultCenter.AddChild(_result);
+        var resultBox = new VBoxContainer();
+        resultBox.AddThemeConstantOverride("separation", 16);
+        _result.AddChild(resultBox);
+        _resultText = new Label { HorizontalAlignment = HorizontalAlignment.Center };
+        _resultText.AddThemeFontSizeOverride("font_size", 26);
+        resultBox.AddChild(_resultText);
+        _resultButton = new Button { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        _resultButton.AddThemeFontSizeOverride("font_size", 22);
+        _resultButton.Pressed += OnResultButton;
+        resultBox.AddChild(_resultButton);
+
+        _overlay = new DebugOverlay { GameState = () =>
+            $"Seed: {_seed}, round {_roundIndex + 1}\nReplay: run.bat {_seed} \"--round={_roundIndex + 1}\" \"--moves={string.Join(",", _yourMoves)}\"" };
+        AddChild(_overlay);
     }
 
     private void ToggleOverlay()
@@ -177,14 +263,16 @@ public partial class Main : Control
         Log.Debug($"Debug overlay {(_overlay.Visible ? "shown" : "hidden")}");
     }
 
-    private static long? ParseSeed(string[] args)
+    private static long NewSeed() => GD.RandRange(100_000, 999_999);
+
+    private static long? ParseNumber(string[] args, string prefix)
     {
-        var arg = args.FirstOrDefault(a => a.StartsWith("--seed="));
+        var arg = args.FirstOrDefault(a => a.StartsWith(prefix));
         if (arg == null)
             return null;
-        if (long.TryParse(arg["--seed=".Length..], out var seed) && seed >= 0)
-            return seed;
-        Log.Info($"Ignoring invalid seed '{arg}'; using a random one");
+        if (long.TryParse(arg[prefix.Length..], out var value) && value >= 0)
+            return value;
+        Log.Info($"Ignoring invalid argument '{arg}'");
         return null;
     }
 

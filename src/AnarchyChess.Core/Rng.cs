@@ -10,6 +10,19 @@ public sealed class Rng
 
     public Rng(long seed) => _state = unchecked((ulong)seed);
 
+    /// <summary>
+    /// The seed for one round of a run: the (round + 1)th number of the run seed's stream.
+    /// So "seed 48213, round 3" can be dealt without playing rounds 1 and 2.
+    /// </summary>
+    public static long ForRound(long seed, int round)
+    {
+        var rng = new Rng(seed);
+        var value = 0UL;
+        for (var i = 0; i <= round; i++)
+            value = rng.NextULong();
+        return unchecked((long)value);
+    }
+
     public ulong NextULong()
     {
         unchecked

@@ -6,10 +6,12 @@ namespace AnarchyChess.Godot;
 /// <summary>F3 panel: build info, recent log, verbose toggle and "Copy bug info" for bug reports.</summary>
 public partial class DebugOverlay : PanelContainer
 {
+    private Label _info = null!;
     private Label _log = null!;
     private Button _verbose = null!;
 
-    public long Seed { get; init; }
+    /// <summary>The game's current state for bug reports: seed, round, and how to replay it.</summary>
+    public Func<string> GameState { get; set; } = () => "";
 
     public override void _Ready()
     {
@@ -27,7 +29,8 @@ public partial class DebugOverlay : PanelContainer
 
         var box = new VBoxContainer();
         AddChild(box);
-        box.AddChild(new Label { Text = $"DEBUG (F3)\n{BuildInfo()}" });
+        _info = new Label();
+        box.AddChild(_info);
 
         _log = new Label { AutowrapMode = TextServer.AutowrapMode.Arbitrary };
         _log.AddThemeFontSizeOverride("font_size", 12);
@@ -57,10 +60,11 @@ public partial class DebugOverlay : PanelContainer
 
     private void Refresh()
     {
+        _info.Text = $"DEBUG (F3)\n{BuildInfo()}";
         _log.Text = string.Join("\n", Log.RecentLines);
         _verbose.Text = $"Verbose log: {(Log.Verbose ? "ON" : "off")}";
     }
 
     private string BuildInfo() =>
-        $"Anarchy Chess v{GameInfo.Version}\nSeed: {Seed}\nGodot: {Engine.GetVersionInfo()["string"]}\nOS: {OS.GetName()}";
+        $"Anarchy Chess v{GameInfo.Version}\n{GameState()}\nGodot: {Engine.GetVersionInfo()["string"]}\nOS: {OS.GetName()}";
 }

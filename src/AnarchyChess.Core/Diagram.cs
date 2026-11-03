@@ -31,4 +31,12 @@ public static class Diagram
         }
         return new Position(catalog, width, rows.Count, pieces, toMove);
     }
+
+    /// <summary>The position as diagram text (the reverse of Parse): for logs, bug reports and tests.</summary>
+    public static string Write(Position pos) =>
+        string.Join("\n", Enumerable.Range(0, pos.Height).Reverse().Select(rank =>
+            string.Join(" ", Enumerable.Range(0, pos.Width).Select(file =>
+                pos[new Square(file, rank)] is { } p
+                    ? (p.Side == Side.Player ? p.Def.Letter : char.ToLowerInvariant(p.Def.Letter)).ToString()
+                    : "."))));
 }

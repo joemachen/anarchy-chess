@@ -405,7 +405,7 @@ public class RulesTests
     [Fact]
     public void Play_NormalMove_HandsTheTurnOver()
     {
-        var next = Rules.Play(Pos(Read("sandbox.txt")), Rules.LegalMoves(Pos(Read("sandbox.txt")))[0]);
+        var next = Rules.Play(Pos(StartPosition), Rules.LegalMoves(Pos(StartPosition))[0]);
         Assert.Equal(Side.Enemy, next.ToMove);
     }
 
@@ -421,7 +421,7 @@ public class RulesTests
     [Fact]
     public void Ongoing_WhenNothingSpecial()
     {
-        Assert.Equal(GameStatus.Ongoing, Rules.Status(Pos(Read("sandbox.txt"))));
+        Assert.Equal(GameStatus.Ongoing, Rules.Status(Pos(StartPosition)));
     }
 
     // ---- Whole-position checks -----------------------------------------------
@@ -430,15 +430,15 @@ public class RulesTests
     [Theory]
     [InlineData(Side.Player)]
     [InlineData(Side.Enemy)]
-    public void SandboxStart_HasFourteenLegalMoves(Side side)
+    public void StartPosition_HasFourteenLegalMoves(Side side)
     {
-        Assert.Equal(14, Rules.LegalMoves(Pos(Read("sandbox.txt"), side)).Count);
+        Assert.Equal(14, Rules.LegalMoves(Pos(StartPosition, side)).Count);
     }
 
     [Fact]
     public void Apply_ReturnsANewPosition_LeavingTheOldOneUnchanged()
     {
-        var before = Pos(Read("sandbox.txt"));
+        var before = Pos(StartPosition);
         var after = Play(before, "a2a3");
         Assert.NotNull(before[Square.Parse("a2")]);
         Assert.Null(after[Square.Parse("a2")]);

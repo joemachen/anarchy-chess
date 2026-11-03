@@ -25,6 +25,7 @@ public partial class BoardView : Control
     private static readonly Color ForkedColor = new(0.85f, 0.2f, 0.55f);
     private static readonly Color PinnedColor = new(0.2f, 0.45f, 0.85f);
     private static readonly Color PreviewColor = new(0.05f, 0.45f, 0.15f);
+    private static readonly Color LastMoveColor = new(0.35f, 0.75f, 0.95f, 0.45f);
 
     private Round _round = null!;
     private Position _position = null!;
@@ -34,6 +35,9 @@ public partial class BoardView : Control
 
     public event Action<Move>? MovePlayed;
 
+    /// <summary>Highlighted so you can see what just happened (mainly the enemy's reply).</summary>
+    public Move? LastMove { get; set; }
+
     public Round Round
     {
         get => _round;
@@ -41,7 +45,8 @@ public partial class BoardView : Control
         {
             _round = value;
             _position = value.Position;
-            _legal = Rules.LegalMoves(_position);
+            // Only you pick moves, and only while the round is on; the enemy moves by itself.
+            _legal = value.Outcome == Outcome.Playing && _position.ToMove == Side.Player ? Rules.LegalMoves(_position) : [];
             _pinned = value.Pinned;
             _selected = null;
             CustomMinimumSize = new Vector2(_position.Width * SquarePx + MarginPx, _position.Height * SquarePx + MarginPx);
@@ -98,6 +103,8 @@ public partial class BoardView : Control
             var square = new Square(file, rank);
             var rect = new Rect2(ScreenPos(square), new Vector2(SquarePx, SquarePx));
             DrawRect(rect, (file + rank) % 2 == 0 ? Dark : Light);
+            if (square == LastMove?.From || square == LastMove?.To)
+                DrawRect(rect, LastMoveColor);
             if (square == _selected)
                 DrawRect(rect, Highlight);
             if (_position[square] is { Def.Royal: true } king && Rules.IsInCheck(_position, king.Side))
