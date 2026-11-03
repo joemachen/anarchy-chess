@@ -1,11 +1,11 @@
 {
   "promotion": "queen",
   "pieces": [
-    { "id": "king",   "letter": "K", "value": 20, "royal": true, "moves": [ { "leap": [1, 0] }, { "leap": [1, 1] } ] },
-    { "id": "queen",  "letter": "Q", "value": 9,  "moves": [ { "slide": [1, 0] }, { "slide": [1, 1] } ] },
-    { "id": "rook",   "letter": "R", "value": 5,  "moves": [ { "slide": [1, 0] } ] },
-    { "id": "bishop", "letter": "B", "value": 3,  "moves": [ { "slide": [1, 1] } ] },
-    { "id": "knight", "letter": "N", "value": 3,  "moves": [ { "leap": [1, 2] } ] },
-    { "id": "pawn",   "letter": "P", "value": 1,  "pawn": true }
+    { "id": "king",   "letter": "K", "glyph": "♚", "value": 20, "royal": true, "moves": [ { "leap": [1, 0] }, { "leap": [1, 1] } ] },
+    { "id": "queen",  "letter": "Q", "glyph": "♛", "value": 9,  "moves": [ { "slide": [1, 0] }, { "slide": [1, 1] } ] },
+    { "id": "rook",   "letter": "R", "glyph": "♜", "value": 5,  "moves": [ { "slide": [1, 0] } ] },
+    { "id": "bishop", "letter": "B", "glyph": "♝", "value": 3,  "moves": [ { "slide": [1, 1] } ] },
+    { "id": "knight", "letter": "N", "glyph": "♞", "value": 3,  "moves": [ { "leap": [1, 2] } ] },
+    { "id": "pawn",   "letter": "P", "glyph": "♟", "value": 1,  "pawn": true }
   ]
 }

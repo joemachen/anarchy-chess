@@ -31,7 +31,7 @@ public sealed class PieceCatalog
         var file = JsonSerializer.Deserialize<FileDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new InvalidDataException("pieces.json is empty.");
         var pieces = file.Pieces.Select(p => new PieceDef(
-            p.Id, char.ToUpperInvariant(p.Letter[0]), p.Value, p.Royal, p.Pawn,
+            p.Id, char.ToUpperInvariant(p.Letter[0]), p.Glyph ?? p.Letter.ToUpperInvariant(), p.Value, p.Royal, p.Pawn,
             (p.Moves ?? []).SelectMany(m => Expand(p.Id, m)).Distinct().ToList())).ToList();
         return new PieceCatalog(pieces, file.Promotion);
     }
@@ -52,7 +52,7 @@ public sealed class PieceCatalog
 
     private sealed record FileDto(string Promotion, List<PieceDto> Pieces);
 
-    private sealed record PieceDto(string Id, string Letter, int Value, bool Royal, bool Pawn, List<MoveDto>? Moves);
+    private sealed record PieceDto(string Id, string Letter, string? Glyph, int Value, bool Royal, bool Pawn, List<MoveDto>? Moves);
 
     private sealed record MoveDto(int[]? Leap, int[]? Slide);
 }

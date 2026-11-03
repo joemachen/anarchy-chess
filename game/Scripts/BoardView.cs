@@ -29,6 +29,9 @@ public partial class BoardView : Control
     private static readonly Color HintColor = new(0.8f, 0.55f, 0.05f);
     private static readonly Color DangerColor = new(0.8f, 0.1f, 0.1f);
 
+    private const string PieceFontPath = "res://fonts/NotoSansSymbols2-Regular.ttf";
+
+    private Font _pieceFont = null!;
     private Round _round = null!;
     private Position _position = null!;
     private IReadOnlyList<Move> _legal = [];
@@ -78,6 +81,13 @@ public partial class BoardView : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Pass; // margin clicks reach Main, which clears the selection
+
+        // Loaded straight from the .ttf so it works without the editor's import step (THIRD_PARTY_NOTICES.md).
+        var font = new FontFile();
+        var error = font.LoadDynamicFont(PieceFontPath);
+        if (error != Error.Ok)
+            Log.Info($"Couldn't load {PieceFontPath} ({error}); drawing pieces with the default font");
+        _pieceFont = error == Error.Ok ? font : ThemeDB.FallbackFont;
     }
 
     public void Select(Square square)
@@ -131,7 +141,7 @@ public partial class BoardView : Control
             if (_position[square] is { Def.Royal: true } king && Rules.IsInCheck(_position, king.Side))
                 DrawRect(rect, CheckColor);
             if (_position[square] is { } piece)
-                DrawPiece(font, rect, piece);
+                DrawPiece(rect, piece);
             if (_round.ForkTags.Contains(square))
                 DrawBadge(font, rect, "FORKED", ForkedColor);
             else if (_pinned.Contains(square))
@@ -170,17 +180,16 @@ public partial class BoardView : Control
                 (i + 1).ToString(), fontSize: 18, modulate: LabelColor);
     }
 
-    private void DrawPiece(Font font, Rect2 rect, Piece piece)
+    /// <summary>The piece's chess symbol: yours cream with a dark outline, the enemy's dark with a light one.</summary>
+    private void DrawPiece(Rect2 rect, Piece piece)
     {
-        var center = rect.GetCenter();
+        const int size = 72;
         var player = piece.Side == Side.Player;
-        DrawCircle(center, SquarePx * 0.36f, player ? PlayerFill : EnemyFill);
-        DrawArc(center, SquarePx * 0.36f, 0, Mathf.Tau, 32, player ? EnemyFill : PlayerFill, 2f);
-        const int size = 40;
-        var letter = piece.Def.Letter.ToString();
-        var width = font.GetStringSize(letter, fontSize: size).X;
-        DrawString(font, center + new Vector2(-width / 2, size * 0.36f), letter, fontSize: size,
-            modulate: player ? EnemyFill : PlayerFill);
+        var glyph = piece.Def.Glyph;
+        var width = _pieceFont.GetStringSize(glyph, fontSize: size).X;
+        var pos = rect.GetCenter() + new Vector2(-width / 2, (_pieceFont.GetAscent(size) - _pieceFont.GetDescent(size)) / 2);
+        DrawStringOutline(_pieceFont, pos, glyph, fontSize: size, size: player ? 8 : 5, modulate: player ? EnemyFill : PlayerFill);
+        DrawString(_pieceFont, pos, glyph, fontSize: size, modulate: player ? PlayerFill : EnemyFill);
     }
 
     /// <summary>A small label on a coloured strip across the top of <paramref name="rect"/>.</summary>

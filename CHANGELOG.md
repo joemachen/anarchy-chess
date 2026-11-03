@@ -8,6 +8,7 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
   - each of your pieces shows its best move this turn ("+21" or "FORK")
   - move dots show "SETS UP FORK" for fork setups, and a red "UNSAFE" if the enemy could take your piece there
   - your pieces the enemy can capture right now show "THREATENED"
+- Pieces are drawn as real chess symbols (♚♛♜♝♞♟) instead of letters: yours cream, the enemy's black. Uses the bundled Noto Sans Symbols 2 font (SIL Open Font License; see THIRD_PARTY_NOTICES.md). Each piece's symbol is set in `pieces.json`.
 - Decision log entries D10-D13.
 
 ## [0.0.4] - 2026-11-01
