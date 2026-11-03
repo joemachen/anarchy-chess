@@ -42,3 +42,23 @@ Significant technical and design decisions: what, why, and what else was conside
 - **What:** all game randomness comes from `Rng`, a small SplitMix64 generator seeded from the number shown on screen. A test pins its first outputs.
 - **Why:** a seed has to replay the same game on any machine and in any future version. `System.Random`'s algorithm isn't guaranteed to stay the same between .NET versions. The golden test fails loudly if anyone changes the algorithm, because that would break old bug-report seeds.
 - **Alternatives:** `System.Random(seed)`; PCG or xoshiro (also good, slightly more code).
+
+## D10: Scoring works like a Balatro poker hand (design, 2026-11-01)
+- **What:** each tactic has a base Value and a Mult. Score = (tactic Value + captured piece value) × Mult, and only the highest-Mult tactic counts. En passant gets a base Value of 4, so its "royal flush" (50) beats a forked rook (21).
+- **Why:** it matches DESIGN.md's tactic levels ("raise a tactic's Value and Mult") and keeps one readable number per move.
+- **Alternatives:** stacking every tactic a move triggers; a separate Value for each tactic. Spec: docs/specs/phase-1b-scoring.md.
+
+## D11: Forks need real targets (design, 2026-11-01)
+- **What:** a fork counts only if 2 or more of its targets are the king, undefended, or worth more than the attacker.
+- **Why:** on crowded 6×6 boards, "attacks two pieces" happens nearly every move, and the callout would stop meaning anything.
+- **Alternatives:** any two attacked pieces.
+
+## D12: The enemy is greedy and predictable (design, 2026-11-01)
+- **What:** it plays the first of: checkmate, take your most valuable piece (with its cheapest attacker), save its own threatened piece, check, a safe move. Ties are broken by the seed.
+- **Why:** DESIGN.md's "dumb but numerous AI"; the rescue step creates the "it can only save one" moment that makes forks work.
+- **Alternatives:** a search-based engine (unpredictable, and fights the design); pure greed with no rescue (makes forks trivial). Spec: docs/specs/phase-1c-round.md.
+
+## D13: Move guides are a game feature, not a dev tool (design, 2026-11-02)
+- **What:** opportunity badges on your pieces, fork-setup and UNSAFE labels on move dots, and THREATENED markers. On by default; G toggles them. There is no "play the best move for me" button.
+- **Why:** Joe's v0.0.4 playtest showed that non-chess players can't find moves, and that fork setups (which score 0) were invisible. An auto-play button would hide the Phase 1 question of whether finding forks is fun.
+- **Alternatives:** a dev-only overlay; a best-move hint button. Spec: docs/specs/phase-1d-guides.md.

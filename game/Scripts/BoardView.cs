@@ -26,12 +26,28 @@ public partial class BoardView : Control
     private static readonly Color PinnedColor = new(0.2f, 0.45f, 0.85f);
     private static readonly Color PreviewColor = new(0.05f, 0.45f, 0.15f);
     private static readonly Color LastMoveColor = new(0.35f, 0.75f, 0.95f, 0.45f);
+    private static readonly Color HintColor = new(0.8f, 0.55f, 0.05f);
+    private static readonly Color DangerColor = new(0.8f, 0.1f, 0.1f);
 
     private Round _round = null!;
     private Position _position = null!;
     private IReadOnlyList<Move> _legal = [];
     private IReadOnlySet<Square> _pinned = new HashSet<Square>();
+    private IReadOnlySet<Square> _threatened = new HashSet<Square>();
+    private Dictionary<Square, PieceHint> _hints = [];
     private Square? _selected;
+    private bool _showGuides = true;
+
+    /// <summary>Move guides (spec 1d): piece badges, fork-setup and unsafe labels on dots, threat markers.</summary>
+    public bool ShowGuides
+    {
+        get => _showGuides;
+        set
+        {
+            _showGuides = value;
+            QueueRedraw();
+        }
+    }
 
     public event Action<Move>? MovePlayed;
 
@@ -48,6 +64,11 @@ public partial class BoardView : Control
             // Only you pick moves, and only while the round is on; the enemy moves by itself.
             _legal = value.Outcome == Outcome.Playing && _position.ToMove == Side.Player ? Rules.LegalMoves(_position) : [];
             _pinned = value.Pinned;
+            _threatened = _legal.Count > 0 ? Guides.Threatened(_position) : new HashSet<Square>();
+            _hints = _legal.Select(m => m.From).Distinct()
+                .Select(s => (Square: s, Hint: Guides.ForPiece(value, s)))
+                .Where(x => x.Hint != null)
+                .ToDictionary(x => x.Square, x => x.Hint!);
             _selected = null;
             CustomMinimumSize = new Vector2(_position.Width * SquarePx + MarginPx, _position.Height * SquarePx + MarginPx);
             QueueRedraw();
@@ -115,6 +136,10 @@ public partial class BoardView : Control
                 DrawBadge(font, rect, "FORKED", ForkedColor);
             else if (_pinned.Contains(square))
                 DrawBadge(font, rect, "PINNED", PinnedColor);
+            if (_showGuides && _threatened.Contains(square))
+                DrawBadge(font, rect, "THREATENED", DangerColor);
+            if (_showGuides && _hints.TryGetValue(square, out var hint) && square != _selected)
+                DrawBadge(font, BottomStrip(square), hint.Label, HintColor);
         }
 
         foreach (var move in _legal.Where(m => m.From == _selected))
@@ -126,10 +151,15 @@ public partial class BoardView : Control
             else
                 DrawCircle(center, SquarePx * 0.14f, DotColor);
 
-            // Score preview: only the player scores (decision D8).
-            if (_position.ToMove == Side.Player && _round.Preview(move) is { Tactic: { } tactic } preview)
-                DrawBadge(font, new Rect2(ScreenPos(move.To) + new Vector2(0, SquarePx * 0.72f), SquarePx, SquarePx * 0.28f),
-                    $"+{preview.Score} {tactic.Name.ToUpperInvariant()}", PreviewColor);
+            // Score preview (only you ever have moves here: decision D8), plus fork setups when guides are on.
+            var preview = _round.Preview(move);
+            var fork = _showGuides && Guides.SetsUpFork(preview);
+            if (preview.Tactic is { } tactic)
+                DrawBadge(font, BottomStrip(move.To), $"+{preview.Score} {tactic.Name.ToUpperInvariant()}{(fork ? " +FORK" : "")}", PreviewColor);
+            else if (fork)
+                DrawBadge(font, BottomStrip(move.To), "SETS UP FORK", ForkedColor);
+            if (_showGuides && Guides.IsUnsafe(_position, move))
+                DrawBadge(font, new Rect2(ScreenPos(move.To), SquarePx, SquarePx), "UNSAFE", DangerColor);
         }
 
         for (var i = 0; i < _position.Width; i++)
@@ -162,6 +192,9 @@ public partial class BoardView : Control
         var width = font.GetStringSize(text, fontSize: size).X;
         DrawString(font, strip.Position + new Vector2((strip.Size.X - width) / 2, size + 2), text, fontSize: size, modulate: Colors.White);
     }
+
+    private Rect2 BottomStrip(Square s) =>
+        new(ScreenPos(s) + new Vector2(0, SquarePx * 0.72f), SquarePx, SquarePx * 0.28f);
 
     private Vector2 ScreenPos(Square s) => new(MarginPx + s.File * SquarePx, (_position.Height - 1 - s.Rank) * SquarePx);
 

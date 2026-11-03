@@ -1,6 +1,6 @@
 # Spec: Phase 1d, Move guides
 
-Status: **draft, waiting for Joe's approval**
+Status: approved by Joe (2026-11-02), as written.
 
 ## Why
 Playtest of v0.0.4 (Joe): *"I suck at chess and don't know which moves to make."* Two things in the current build cause this:

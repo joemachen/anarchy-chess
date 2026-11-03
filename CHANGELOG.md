@@ -2,6 +2,14 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.1.0] - 2026-11-02
+### Added
+- Move guides (on by default; G or the Guides button toggles them):
+  - each of your pieces shows its best move this turn ("+21" or "FORK")
+  - move dots show "SETS UP FORK" for fork setups, and a red "UNSAFE" if the enemy could take your piece there
+  - your pieces the enemy can capture right now show "THREATENED"
+- Decision log entries D10-D13.
+
 ## [0.0.4] - 2026-11-01
 ### Added
 - Real rounds: each board is dealt from (seed, round). Your fixed army (K, R, B, N, 2 P) vs an enemy king plus a weighted-random army. 10 moves to reach the target; checkmate wins outright.
