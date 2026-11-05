@@ -62,3 +62,13 @@ Significant technical and design decisions: what, why, and what else was conside
 - **What:** opportunity badges on your pieces, fork-setup and UNSAFE labels on move dots, and THREATENED markers. On by default; G toggles them. There is no "play the best move for me" button.
 - **Why:** Joe's v0.0.4 playtest showed that non-chess players can't find moves, and that fork setups (which score 0) were invisible. An auto-play button would hide the Phase 1 question of whether finding forks is fun.
 - **Alternatives:** a dev-only overlay; a best-move hint button. Spec: docs/specs/phase-1d-guides.md.
+
+## D14: Phase 1 gate passed (design, 2026-11-04)
+- **What:** after playing v0.1.0, Joe's verdict on "does banking points with a fork feel good?" is yes, forks are fun. The core scoring loop stays, and Phase 2 can start.
+- **Why it took two tries:** on v0.0.4 Joe couldn't find good moves, so the question couldn't be answered. The move guides (D13) and chess symbols made it answerable.
+- **Alternatives:** rework the scoring before adding more systems; not needed.
+
+## D15: How the bag and setup work (design, 2026-11-04)
+- **What:** draw 6 from a 10-piece bag, place up to 4 for free, keep the rest as reserves to drop later for a move. Your king is dealt by the seed. Money and blinds move to Phase 3, alongside the shop.
+- **Why:** this fills in D6: if your whole hand were free, nothing would be left to drop. A dealt king means one less choice each round, which helps non-chess players. Money with nothing to spend it on means nothing.
+- **Alternatives:** place your whole hand; place the king yourself; add money and blinds now. Spec: docs/specs/phase-2-army-bag.md.

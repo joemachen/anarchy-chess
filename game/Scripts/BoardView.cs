@@ -4,6 +4,9 @@ using Side = AnarchyChess.Core.Side;
 
 namespace AnarchyChess.Godot;
 
+/// <summary>During setup: squares the held piece may go, and which of those the enemy attacks.</summary>
+public sealed record SetupMarks(IReadOnlySet<Square> Allowed, IReadOnlySet<Square> Unsafe);
+
 /// <summary>
 /// Draws a position and lets the side to move pick a piece, then one of its legal moves (shown as dots).
 /// Rank 1 is at the bottom. Pieces are placeholder letters until real art lands.
@@ -26,10 +29,9 @@ public partial class BoardView : Control
     private static readonly Color PinnedColor = new(0.2f, 0.45f, 0.85f);
     private static readonly Color PreviewColor = new(0.05f, 0.45f, 0.15f);
     private static readonly Color LastMoveColor = new(0.35f, 0.75f, 0.95f, 0.45f);
+    private static readonly Color AllowedColor = new(0.3f, 0.8f, 0.4f, 0.45f);
     private static readonly Color HintColor = new(0.8f, 0.55f, 0.05f);
     private static readonly Color DangerColor = new(0.8f, 0.1f, 0.1f);
-
-    private const string PieceFontPath = "res://fonts/NotoSansSymbols2-Regular.ttf";
 
     private Font _pieceFont = null!;
     private Round _round = null!;
@@ -53,6 +55,10 @@ public partial class BoardView : Control
     }
 
     public event Action<Move>? MovePlayed;
+    public event Action<Square>? SetupSquareClicked;
+
+    /// <summary>Non-null during setup: clicks then go to SetupSquareClicked instead of playing moves.</summary>
+    public SetupMarks? Marks { get; set; }
 
     /// <summary>Highlighted so you can see what just happened (mainly the enemy's reply).</summary>
     public Move? LastMove { get; set; }
@@ -81,13 +87,7 @@ public partial class BoardView : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Pass; // margin clicks reach Main, which clears the selection
-
-        // Loaded straight from the .ttf so it works without the editor's import step (THIRD_PARTY_NOTICES.md).
-        var font = new FontFile();
-        var error = font.LoadDynamicFont(PieceFontPath);
-        if (error != Error.Ok)
-            Log.Info($"Couldn't load {PieceFontPath} ({error}); drawing pieces with the default font");
-        _pieceFont = error == Error.Ok ? font : ThemeDB.FallbackFont;
+        _pieceFont = PieceFont.Get();
     }
 
     public void Select(Square square)
@@ -112,6 +112,11 @@ public partial class BoardView : Control
         if (square is not { } clicked)
             return; // click on the label margin: let it fall through and clear the selection
         AcceptEvent();
+        if (Marks != null)
+        {
+            SetupSquareClicked?.Invoke(clicked);
+            return;
+        }
 
         var move = _legal.FirstOrDefault(m => m.From == _selected && m.To == clicked);
         if (_selected != null && move != default)
@@ -136,6 +141,8 @@ public partial class BoardView : Control
             DrawRect(rect, (file + rank) % 2 == 0 ? Dark : Light);
             if (square == LastMove?.From || square == LastMove?.To)
                 DrawRect(rect, LastMoveColor);
+            if (Marks?.Allowed.Contains(square) == true)
+                DrawRect(rect, AllowedColor);
             if (square == _selected)
                 DrawRect(rect, Highlight);
             if (_position[square] is { Def.Royal: true } king && Rules.IsInCheck(_position, king.Side))
@@ -146,6 +153,8 @@ public partial class BoardView : Control
                 DrawBadge(font, rect, "FORKED", ForkedColor);
             else if (_pinned.Contains(square))
                 DrawBadge(font, rect, "PINNED", PinnedColor);
+            if (_showGuides && Marks?.Unsafe.Contains(square) == true)
+                DrawBadge(font, rect, "UNSAFE", DangerColor);
             if (_showGuides && _threatened.Contains(square))
                 DrawBadge(font, rect, "THREATENED", DangerColor);
             if (_showGuides && _hints.TryGetValue(square, out var hint) && square != _selected)

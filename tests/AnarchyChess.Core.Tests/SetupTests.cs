@@ -2,24 +2,24 @@ using static AnarchyChess.Core.Tests.TestContent;
 
 namespace AnarchyChess.Core.Tests;
 
-// docs/specs/phase-1c-round.md, "The round" rules 1-4.
+// Dealing a round: docs/specs/phase-1c-round.md rules 1-4, and the bag in phase-2-army-bag.md.
 public class SetupTests
 {
-    private static readonly LadderConfig Ladder = LadderConfig.FromJson(Read("rounds.json"));
-
-    private static Position Deal(long seed, int round) => Setup.Deal(Catalog, Ladder, seed, round);
+    private static string Hand(Deployment d) => string.Join(",", d.Tray.Select(p => p.Id).Order());
 
     [Fact]
-    public void SameSeedAndRound_DealsTheSameBoard()
+    public void SameSeedAndRound_DealsTheSameBoardAndHand()
     {
-        Assert.Equal(Diagram.Write(Deal(48213, 2)), Diagram.Write(Deal(48213, 2)));
+        var (a, b) = (Deploy(48213, 2), Deploy(48213, 2));
+        Assert.Equal(Diagram.Write(a.Position), Diagram.Write(b.Position));
+        Assert.Equal(a.Tray, b.Tray);
     }
 
     [Fact]
     public void DifferentRoundsAndSeeds_DealDifferentBoards()
     {
-        var boards = Enumerable.Range(0, 5).Select(r => Diagram.Write(Deal(48213, r)))
-            .Append(Diagram.Write(Deal(48214, 0)))
+        var boards = Enumerable.Range(0, 5).Select(r => Diagram.Write(Deploy(48213, r).Position))
+            .Append(Diagram.Write(Deploy(48214, 0).Position))
             .ToList();
         Assert.Equal(boards.Count, boards.Distinct().Count());
     }
@@ -33,33 +33,50 @@ public class SetupTests
     }
 
     [Fact]
-    public void EveryBoard_FollowsTheRules_Across1000Seeds()
+    public void EveryDeal_FollowsTheRules_Across1000Seeds()
     {
         for (var seed = 0; seed < 1000; seed++)
         for (var round = 0; round < Ladder.Rounds.Count; round++)
         {
-            var pos = Deal(seed, round);
+            var deal = Deploy(seed, round);
+            var pos = deal.Position;
             var where = $"seed {seed}, round {round + 1}:\n{Diagram.Write(pos)}";
             var player = pos.PiecesOf(Side.Player).ToList();
             var enemy = pos.PiecesOf(Side.Enemy).ToList();
 
             Assert.True(pos.Width == 6 && pos.Height == 6, where);
             Assert.True(pos.ToMove == Side.Player, where);
-            Assert.True(player.Count == Ladder.PlayerArmy.Count + 1, where);
+
+            // Only your king is on the board, on rank 1.
+            Assert.True(player.Count == 1 && player[0].Piece.Def.Royal && player[0].Square.Rank == 0, where);
             Assert.True(enemy.Count == Ladder.Rounds[round].Enemies + 1, where);
-            Assert.True(player.Count(p => p.Piece.Def.Royal) == 1 && enemy.Count(p => p.Piece.Def.Royal) == 1, where);
+            Assert.True(enemy.Count(p => p.Piece.Def.Royal) == 1, where);
             Assert.False(Rules.IsInCheck(pos, Side.Player), where);
             Assert.False(Rules.IsInCheck(pos, Side.Enemy), where);
-            Assert.NotEmpty(Rules.LegalMoves(pos));
-
-            Assert.All(player, p => Assert.True(p.Square.Rank <= 1, where));
-            Assert.All(player.Where(p => p.Piece.Def.Pawn), p => Assert.True(p.Square.Rank == 1, where));
             Assert.All(enemy, p => Assert.True(p.Square.Rank >= 3, where));
             Assert.All(enemy.Where(p => p.Piece.Def.Pawn), p => Assert.True(p.Square.Rank <= 4, where));
 
-            var kings = player.Concat(enemy).Where(p => p.Piece.Def.Royal).Select(p => p.Square).ToList();
-            Assert.True(Math.Max(Math.Abs(kings[0].File - kings[1].File), Math.Abs(kings[0].Rank - kings[1].Rank)) > 1, where);
+            // The hand comes from the bag, and there's always a way to start the round.
+            Assert.True(deal.Tray.Count == Ladder.HandSize, where);
+            var bag = Ladder.Bag.ToList();
+            Assert.All(deal.Tray, p => Assert.True(bag.Remove(p.Id), where));
+            Assert.True(deal.Tray.Any(p => deal.SquaresFor(p).Count > 0), where);
         }
+    }
+
+    [Fact]
+    public void TheBagRefills_EveryRoundDrawsFromAllTenPieces()
+    {
+        // Five hands of 6 is 30 pieces from a bag of 10: only possible if the bag is full each round.
+        Assert.All(Enumerable.Range(0, 5), r => Assert.Equal(Ladder.HandSize, Deploy(48213, r).Tray.Count));
+    }
+
+    [Fact]
+    public void Hands_VaryWithTheSeed_AndCanContainEveryKindOfPiece()
+    {
+        var hands = Enumerable.Range(0, 200).Select(seed => Deploy(seed, 0)).ToList();
+        Assert.True(hands.Select(Hand).Distinct().Count() > 5);
+        Assert.All(Ladder.Bag.Distinct(), id => Assert.Contains(hands, h => h.Tray.Any(p => p.Id == id)));
     }
 
     [Fact]
@@ -68,16 +85,17 @@ public class SetupTests
         Assert.Equal(10, Ladder.Moves);
         Assert.Equal([15, 25, 35, 50, 70], Ladder.Rounds.Select(r => r.Target));
         Assert.Equal([4, 5, 5, 6, 7], Ladder.Rounds.Select(r => r.Enemies));
-        Assert.Equal(["rook", "bishop", "knight", "pawn", "pawn"], Ladder.PlayerArmy);
+        Assert.Equal(6, Ladder.HandSize);
+        Assert.Equal(4, Ladder.FreePlacements);
+        Assert.Equal(["bishop", "bishop", "knight", "knight", "pawn", "pawn", "pawn", "pawn", "pawn", "rook"], Ladder.Bag.Order());
     }
 
     [Fact]
-    public void StartRound_UsesTheLadderTargetAndMoves()
+    public void Deploy_CarriesTheRoundsTargetAndMoves()
     {
-        var round = Setup.StartRound(Catalog, Tactics, Ladder, 48213, 3);
+        var round = AutoStart(48213, 3);
         Assert.Equal(50, round.Target);
         Assert.Equal(10, round.MovesLeft);
         Assert.Equal(Outcome.Playing, round.Outcome);
-        Assert.Equal(Diagram.Write(Deal(48213, 3)), Diagram.Write(round.Position));
     }
 }

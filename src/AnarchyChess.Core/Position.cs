@@ -61,6 +61,14 @@ public sealed class Position
         return new Position(this, squares, ToMove.Opponent(), enPassant);
     }
 
+    /// <summary>The same position with one square changed: a piece added, or null to clear it. Used during setup.</summary>
+    public Position With(Square square, Piece? piece)
+    {
+        var squares = (Piece?[])_squares.Clone();
+        squares[Index(square)] = piece;
+        return new Position(this, squares, ToMove, EnPassant);
+    }
+
     /// <summary>The side to move skips its turn (used when it has no legal move but isn't in check).</summary>
     public Position Pass() => new(this, _squares, ToMove.Opponent(), null);
 

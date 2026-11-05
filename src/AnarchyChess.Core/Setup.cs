@@ -6,36 +6,35 @@ public sealed record PoolEntry(string Piece, int Weight);
 
 public sealed record RoundConfig(int Target, int Enemies);
 
-/// <summary>The ladder from rounds.json: board size, moves per round, your army, the enemy pool, and each round.</summary>
+/// <summary>The ladder from rounds.json: board size, moves per round, your bag and hand, the enemy pool, and each round.</summary>
 public sealed record LadderConfig(
-    int BoardSize, int Moves, IReadOnlyList<string> PlayerArmy, IReadOnlyList<PoolEntry> EnemyPool, IReadOnlyList<RoundConfig> Rounds)
+    int BoardSize, int Moves, IReadOnlyList<string> Bag, int HandSize, int FreePlacements,
+    IReadOnlyList<PoolEntry> EnemyPool, IReadOnlyList<RoundConfig> Rounds)
 {
     public static LadderConfig FromJson(string json) =>
         JsonSerializer.Deserialize<LadderConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
         ?? throw new InvalidDataException("rounds.json is empty.");
 }
 
-/// <summary>Deals each round's board from (seed, round): docs/specs/phase-1c-round.md, rules 1-4.</summary>
+/// <summary>
+/// Deals each round from (seed, round): the enemy army, your king and your hand, ready for setup
+/// (docs/specs/phase-1c-round.md rules 1-4, phase-2-army-bag.md). The bag is full again every round.
+/// </summary>
 public static class Setup
 {
     private const int MaxAttempts = 1000;
 
-    public static Round StartRound(PieceCatalog catalog, TacticCatalog tactics, LadderConfig ladder, long seed, int round) =>
-        Round.Start(Deal(catalog, ladder, seed, round), tactics, ladder.Rounds[round].Target, ladder.Moves, Rng.ForRound(seed, round));
-
-    public static Position Deal(PieceCatalog catalog, LadderConfig ladder, long seed, int round)
+    public static Deployment Deploy(PieceCatalog catalog, TacticCatalog tactics, LadderConfig ladder, long seed, int round)
     {
-        var rng = new Rng(Rng.ForRound(seed, round));
+        var roundSeed = Rng.ForRound(seed, round);
+        var rng = new Rng(roundSeed);
+        var hand = DrawHand(catalog, ladder, rng);
         var size = ladder.BoardSize;
         var king = catalog["king"];
         for (var attempt = 0; attempt < MaxAttempts; attempt++)
         {
             var pieces = new Dictionary<Square, Piece>();
-
-            // Yours: pawns on rank 2 (they keep the double step), everything else on ranks 1-2.
-            var army = ladder.PlayerArmy.Select(id => catalog[id]).Prepend(king).OrderByDescending(d => d.Pawn);
-            foreach (var def in army)
-                Place(pieces, rng, new Piece(def, Side.Player), size, def.Pawn ? 1 : 0, 1);
+            Place(pieces, rng, new Piece(king, Side.Player), size, 0, 0);
 
             // Theirs: king plus weighted random picks, scattered over the top half; pawns never on the top rank.
             var enemies = Enumerable.Range(0, ladder.Rounds[round].Enemies).Select(_ => Pick(catalog, ladder.EnemyPool, rng))
@@ -45,9 +44,22 @@ public static class Setup
 
             var pos = new Position(catalog, size, size, pieces, Side.Player);
             if (!Rules.IsInCheck(pos, Side.Player) && !Rules.IsInCheck(pos, Side.Enemy) && Rules.LegalMoves(pos).Count > 0)
-                return pos;
+                return new Deployment(pos, hand, ladder.FreePlacements, tactics, ladder.Rounds[round].Target, ladder.Moves, roundSeed);
         }
         throw new InvalidOperationException($"No legal board found for seed {seed}, round {round + 1}.");
+    }
+
+    private static List<PieceDef> DrawHand(PieceCatalog catalog, LadderConfig ladder, Rng rng)
+    {
+        var bag = ladder.Bag.Select(id => catalog[id]).ToList();
+        var hand = new List<PieceDef>();
+        for (var i = 0; i < ladder.HandSize; i++)
+        {
+            var pick = rng.NextInt(bag.Count);
+            hand.Add(bag[pick]);
+            bag.RemoveAt(pick);
+        }
+        return hand;
     }
 
     private static void Place(Dictionary<Square, Piece> pieces, Rng rng, Piece piece, int size, int lowRank, int highRank)

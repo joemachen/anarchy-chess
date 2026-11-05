@@ -6,6 +6,26 @@ internal static class TestContent
     public static readonly PieceCatalog Catalog = PieceCatalog.FromJson(Read("pieces.json"));
     public static readonly TacticCatalog Tactics = TacticCatalog.FromJson(Read("tactics.json"));
 
+    public static readonly LadderConfig Ladder = LadderConfig.FromJson(Read("rounds.json"));
+
+    public static Deployment Deploy(long seed, int round) => Setup.Deploy(Catalog, Tactics, Ladder, seed, round);
+
+    /// <summary>A stand-in for a player's setup: its most valuable pieces, on random safe squares.</summary>
+    public static Round AutoStart(long seed, int round)
+    {
+        var deployment = Deploy(seed, round);
+        var rng = new Rng(seed + round);
+        foreach (var piece in deployment.Tray.OrderByDescending(p => p.Value).Take(Ladder.FreePlacements).ToList())
+        {
+            var squares = deployment.SquaresFor(piece).OrderBy(s => (s.Rank, s.File)).ToList();
+            var safe = squares.Where(s => !deployment.IsUnsafe(piece, s)).ToList();
+            var choices = safe.Count > 0 ? safe : squares;
+            if (choices.Count > 0)
+                deployment = deployment.Place(piece, choices[rng.NextInt(choices.Count)]);
+        }
+        return deployment.Start();
+    }
+
     public static string Read(string file) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "content", file));
 
     public static Position Pos(string diagram, Side toMove = Side.Player) => Diagram.Parse(diagram, Catalog, toMove);

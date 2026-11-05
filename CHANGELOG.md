@@ -2,6 +2,16 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.1.1] - 2026-11-04
+### Added
+- The army bag: 10 pieces in `game/content/rounds.json`. Each round you draw a hand of 6 from the seed, and the bag refills between rounds.
+- Free setup: the enemy and your king are dealt, then you place up to 4 pieces on your back two ranks (pawns on rank 2 only) before clicking Start round. Squares that would check the enemy king aren't offered.
+- A tray beside the board shows your hand, then your reserves. Guides work during setup.
+- `--setup=` launch option; bug info's replay command now includes your setup.
+
+### Changed
+- Your fixed Phase 1 army is gone: you now choose from what you draw.
+
 ## [0.1.0] - 2026-11-02
 ### Added
 - Move guides (on by default; G or the Guides button toggles them):

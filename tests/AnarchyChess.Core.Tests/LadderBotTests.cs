@@ -10,7 +10,6 @@ namespace AnarchyChess.Core.Tests;
 public class LadderBotTests(ITestOutputHelper output)
 {
     private const int Seeds = 200;
-    private static readonly LadderConfig Ladder = LadderConfig.FromJson(Read("rounds.json"));
 
     private static Round PlayOut(Round round)
     {
@@ -37,7 +36,7 @@ public class LadderBotTests(ITestOutputHelper output)
             scores[r] = [];
             for (var seed = 0; seed < Seeds; seed++)
             {
-                var end = PlayOut(Setup.StartRound(Catalog, Tactics, Ladder, seed, r));
+                var end = PlayOut(AutoStart(seed, r));
                 if (end.Outcome is Outcome.WonTarget or Outcome.WonCheckmate)
                     wins[r]++;
                 scores[r].Add(end.Score);
@@ -56,8 +55,8 @@ public class LadderBotTests(ITestOutputHelper output)
     [Fact]
     public void SameSeed_PlaysOutTheSameWay()
     {
-        var a = PlayOut(Setup.StartRound(Catalog, Tactics, Ladder, 48213, 2));
-        var b = PlayOut(Setup.StartRound(Catalog, Tactics, Ladder, 48213, 2));
+        var a = PlayOut(AutoStart(48213, 2));
+        var b = PlayOut(AutoStart(48213, 2));
         Assert.Equal((a.Outcome, a.Score, a.MovesLeft), (b.Outcome, b.Score, b.MovesLeft));
         Assert.Equal(Diagram.Write(a.Position), Diagram.Write(b.Position));
     }
