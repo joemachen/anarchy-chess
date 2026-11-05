@@ -27,6 +27,7 @@ public partial class Main : Control
     private Label _score = null!;
     private Label _callout = null!;
     private Label _seedInfo = null!;
+    private Button _guidesButton = null!;
     private PanelContainer _result = null!;
     private Label _resultText = null!;
     private Button _resultButton = null!;
@@ -61,6 +62,15 @@ public partial class Main : Control
     {
         if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
             ToggleOverlay();
+        if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.G })
+            ToggleGuides();
+    }
+
+    private void ToggleGuides()
+    {
+        _board.ShowGuides = !_board.ShowGuides;
+        _guidesButton.Text = $"Guides: {(_board.ShowGuides ? "ON" : "OFF")} (G)";
+        Log.Info($"Guides {(_board.ShowGuides ? "on" : "off")}");
     }
 
     // Clicks that reach the background (not the board or a button) clear the board selection.
@@ -210,6 +220,11 @@ public partial class Main : Control
         _score = new Label { Position = new Vector2(24, 90) };
         _score.AddThemeFontSizeOverride("font_size", 40);
         AddChild(_score);
+
+        _guidesButton = new Button { Text = "Guides: ON (G)", Position = new Vector2(24, 200) };
+        _guidesButton.AddThemeFontSizeOverride("font_size", 20);
+        _guidesButton.Pressed += ToggleGuides;
+        AddChild(_guidesButton);
 
         var title = new Label { Text = "ANARCHY CHESS", Position = new Vector2(24, 16) };
         title.AddThemeFontSizeOverride("font_size", 28);

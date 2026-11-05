@@ -10,7 +10,10 @@ public static class SideExtensions
 /// <summary>One direction a piece moves in: a single jump, or a slide that repeats until blocked.</summary>
 public readonly record struct MovePattern(int Files, int Ranks, bool Slides);
 
-/// <summary>A kind of piece, loaded from pieces.json. Royal pieces can be checked; pawns use the pawn rules.</summary>
-public sealed record PieceDef(string Id, char Letter, int Value, bool Royal, bool Pawn, IReadOnlyList<MovePattern> Moves);
+/// <summary>
+/// A kind of piece, loaded from pieces.json. Royal pieces can be checked; pawns use the pawn rules.
+/// Glyph is what the board draws (a chess symbol); it defaults to the letter.
+/// </summary>
+public sealed record PieceDef(string Id, char Letter, string Glyph, int Value, bool Royal, bool Pawn, IReadOnlyList<MovePattern> Moves);
 
 public sealed record Piece(PieceDef Def, Side Side);

@@ -21,6 +21,27 @@ public class PieceCatalogTests
         Assert.Equal("queen", TestContent.Catalog.Promotion.Id);
     }
 
+    [Theory]
+    [InlineData("king", "♚")]
+    [InlineData("queen", "♛")]
+    [InlineData("rook", "♜")]
+    [InlineData("bishop", "♝")]
+    [InlineData("knight", "♞")]
+    [InlineData("pawn", "♟")]
+    public void Content_EveryPieceHasItsChessSymbol(string id, string glyph)
+    {
+        Assert.Equal(glyph, TestContent.Catalog[id].Glyph);
+    }
+
+    [Fact]
+    public void PieceWithoutAGlyph_FallsBackToItsLetter()
+    {
+        var catalog = PieceCatalog.FromJson("""
+            { "promotion": "x", "pieces": [ { "id": "x", "letter": "X", "value": 1, "moves": [ { "leap": [1, 0] } ] } ] }
+            """);
+        Assert.Equal("X", catalog["x"].Glyph);
+    }
+
     [Fact]
     public void Patterns_ExpandToEveryDirection()
     {
