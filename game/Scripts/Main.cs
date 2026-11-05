@@ -8,8 +8,8 @@ namespace AnarchyChess.Godot;
 /// <summary>
 /// Root of the game UI, built in code: the 5-round ladder from docs/specs/phase-1c-round.md.
 /// Command-line args (after "--"): --seed=N (play that seed), --round=N (start at round N), --overlay (open the debug
-/// overlay), --moves=b1c3,c3e4 (replay your moves; the enemy replies as it would), --select=c3 (select a square),
-/// --screenshot=path.png (save a screenshot after the first frames and quit).
+/// overlay), --setup=Nb2,Pa2 (place pieces), --moves=b1c3,c3e4 (start the round and replay your moves; the enemy replies
+/// as it would), --select=c3 (select a square), --screenshot=path.png (save a screenshot after the first frames and quit).
 /// </summary>
 public partial class Main : Control
 {
@@ -21,8 +21,10 @@ public partial class Main : Control
     private long _seed;
     private int _roundIndex;
     private readonly List<string> _yourMoves = [];
+    private string _placements = "";
 
     private BoardView _board = null!;
+    private TrayView _tray = null!;
     private Label _hud = null!;
     private Label _score = null!;
     private Label _callout = null!;
@@ -47,11 +49,19 @@ public partial class Main : Control
         var startRound = (int)Math.Clamp(ParseNumber(args, "--round=") ?? 1, 1, _ladder.Rounds.Count) - 1;
         StartRound(startRound);
 
+        var setup = args.FirstOrDefault(a => a.StartsWith("--setup="));
+        if (setup != null)
+            ReplaySetup(setup["--setup=".Length..]);
         var moves = args.FirstOrDefault(a => a.StartsWith("--moves="));
-        if (moves != null)
+        if (moves != null && _deployment!.StartBlockedReason == null)
+        {
+            OnStartRound();
             Replay(moves["--moves=".Length..]);
+        }
         var select = args.FirstOrDefault(a => a.StartsWith("--select="));
-        if (select != null)
+        if (select != null && _deployment != null)
+            OnSetupSquare(Square.Parse(select["--select=".Length..]));
+        else if (select != null)
             _board.Select(Square.Parse(select["--select=".Length..]));
         var shot = args.FirstOrDefault(a => a.StartsWith("--screenshot="));
         if (shot != null)
@@ -76,7 +86,11 @@ public partial class Main : Control
     // Clicks that reach the background (not the board or a button) clear the board selection.
     public override void _GuiInput(InputEvent e)
     {
-        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+            return;
+        if (_deployment != null)
+            ClearSetupPick();
+        else
             _board.ClearSelection();
     }
 
@@ -84,14 +98,14 @@ public partial class Main : Control
     {
         _roundIndex = index;
         _yourMoves.Clear();
-        var round = Setup.StartRound(_catalog, _tactics, _ladder, _seed, index);
-        _board.LastMove = null;
-        _board.Round = round;
+        _placements = "";
+        _deployment = Setup.Deploy(_catalog, _tactics, _ladder, _seed, index);
         _callout.Text = "";
         _result.Visible = false;
         _seedInfo.Text = $"Seed {_seed} · v{GameInfo.Version}";
-        Log.Info($"Round {index + 1}/{_ladder.Rounds.Count}, seed {_seed}, target {round.Target}:\n{Diagram.Write(round.Position)}");
-        UpdateHud();
+        Log.Info($"Round {index + 1}/{_ladder.Rounds.Count}, seed {_seed}, target {_deployment.Target}, " +
+                 $"hand {string.Join(" ", _deployment.Tray.Select(p => p.Letter))}:\n{Diagram.Write(_deployment.Position)}");
+        ShowSetup();
     }
 
     private async void OnYourMove(Move move)
@@ -162,7 +176,8 @@ public partial class Main : Control
     {
         var round = _board.Round;
         var check = Rules.IsInCheck(round.Position, Side.Player) && round.Outcome == Outcome.Playing ? "   ·   CHECK!" : "";
-        _hud.Text = $"ROUND {_roundIndex + 1}/{_ladder.Rounds.Count}   ·   TARGET {round.Target}   ·   MOVES LEFT {round.MovesLeft}{check}";
+        var progress = _deployment != null ? "SETUP" : $"MOVES LEFT {round.MovesLeft}{check}";
+        _hud.Text = $"ROUND {_roundIndex + 1}/{_ladder.Rounds.Count}   ·   TARGET {round.Target}   ·   {progress}";
         _score.Text = $"SCORE\n{round.Score} / {round.Target}";
     }
 
@@ -211,6 +226,7 @@ public partial class Main : Control
 
         _board = new BoardView();
         _board.MovePlayed += OnYourMove;
+        _board.SetupSquareClicked += OnSetupSquare;
         column.AddChild(_board);
 
         _callout = new Label { HorizontalAlignment = HorizontalAlignment.Center };
@@ -220,6 +236,11 @@ public partial class Main : Control
         _score = new Label { Position = new Vector2(24, 90) };
         _score.AddThemeFontSizeOverride("font_size", 40);
         AddChild(_score);
+
+        _tray = new TrayView { Position = new Vector2(972, 110), CustomMinimumSize = new Vector2(270, 0) };
+        _tray.PieceClicked += OnTrayPiece;
+        _tray.StartClicked += OnStartRound;
+        AddChild(_tray);
 
         _guidesButton = new Button { Text = "Guides: ON (G)", Position = new Vector2(24, 200) };
         _guidesButton.AddThemeFontSizeOverride("font_size", 20);
@@ -268,7 +289,8 @@ public partial class Main : Control
         resultBox.AddChild(_resultButton);
 
         _overlay = new DebugOverlay { GameState = () =>
-            $"Seed: {_seed}, round {_roundIndex + 1}\nReplay: run.bat {_seed} \"--round={_roundIndex + 1}\" \"--moves={string.Join(",", _yourMoves)}\"" };
+            $"Seed: {_seed}, round {_roundIndex + 1}\nReplay: run.bat {_seed} \"--round={_roundIndex + 1}\" " +
+            $"\"--setup={(_deployment != null ? Placements(_deployment) : _placements)}\" \"--moves={string.Join(",", _yourMoves)}\"" };
         AddChild(_overlay);
     }
 

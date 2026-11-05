@@ -1,7 +1,9 @@
 {
   "boardSize": 6,
   "moves": 10,
-  "playerArmy": ["rook", "bishop", "knight", "pawn", "pawn"],
+  "bag": ["rook", "bishop", "bishop", "knight", "knight", "pawn", "pawn", "pawn", "pawn", "pawn"],
+  "handSize": 6,
+  "freePlacements": 4,
   "enemyPool": [
     { "piece": "pawn",   "weight": 8 },
     { "piece": "knight", "weight": 3 },

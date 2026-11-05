@@ -78,11 +78,10 @@ public class GuidesTests
     [Fact]
     public void Badge_AlwaysMatchesTheBestDot_OnDealtBoards()
     {
-        var ladder = LadderConfig.FromJson(Read("rounds.json"));
         for (var seed = 0; seed < 50; seed++)
-        for (var r = 0; r < ladder.Rounds.Count; r++)
+        for (var r = 0; r < Ladder.Rounds.Count; r++)
         {
-            var round = Setup.StartRound(Catalog, Tactics, ladder, seed, r);
+            var round = AutoStart(seed, r);
             foreach (var (square, _) in round.Position.PiecesOf(Side.Player))
             {
                 var previews = Rules.LegalMoves(round.Position).Where(m => m.From == square).Select(round.Preview).ToList();

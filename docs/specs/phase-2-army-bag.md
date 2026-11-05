@@ -1,6 +1,6 @@
 # Spec: Phase 2, The army bag
 
-Status: **draft, waiting for Joe's approval**
+Status: approved by Joe (2026-11-04), as written, with one clarification to setup rule 2 (one click can't both pick a piece up and show its dots).
 
 ## Goal
 Phase 1 proved that forks are fun. Phase 2 adds the "what did I draw?" tension from DESIGN.md: instead of a fixed army placed at random, you draw a hand from a bag and choose where your pieces go.
@@ -18,7 +18,7 @@ It comes in two builds, so you can test setup before drops land on top of it:
 
 ## Free setup (build v0.1.1)
 1. The round opens in **setup**. The enemy army is already on the board, so you can plan around it. Your king is already placed by the seed, on rank 1.
-2. Your 6 drawn pieces wait in a tray beside the board. Click a piece in the tray, then click a highlighted square to place it. Click a placed piece to pick it back up. Nothing is final until you start.
+2. Your 6 drawn pieces wait in a tray beside the board. Click a piece in the tray, then click a highlighted square to place it. Click a placed piece once to select it; click a highlighted square to move it, or click it again to return it to the tray. Nothing is final until you start.
 3. **You place up to 4 pieces for free**, on ranks 1–2. The rest stay in your tray as **reserves**.
 4. **Pawns can only go on rank 2**, so they keep their double step.
 5. **You can't place a piece where it would check the enemy king,** because then you could capture the king on your first move. Those squares simply aren't offered.
